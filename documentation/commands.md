@@ -4,8 +4,8 @@
 | *OPC | *OPC | X | Gets or sets the OPC bit (0) in the Event Status Register (ESR). | Generics |
 | *RST | *RST | X | Initiates a device reset. | Generics |
 | CHDR | COMM_HEADER | X | Sets or gets the command returned format | Communication
-| OUTP | OUTPUT |   | Sets or gets the output state. | Output |
-| BSWV | BASIC_WAVE |   | Sets or gets the basic wave parameters. | Output |
+| OUTP | OUTPUT | X | Sets or gets the output state. | Output |
+| BSWV | BASIC_WAVE | X | Sets or gets the basic wave parameters. | Output |
 | MDWV | MODULATEWAVE |  |Sets or gets the modulation parameters. | Output |
 | SWWV | SWEEPWAVE |  | Sets or gets the sweep parameters. | Output |
 | BTWV | BURSTWAVE | |Sets or gets the burst parameters. | Output |

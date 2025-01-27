@@ -311,234 +311,37 @@ class PySDG:
     """
     # =============================================================================================================================================
 
-    def GetAllErrors(self, print=False):
+    def GetAllErrors(self, toprint=False):
         """
-        PySDG [GetAllErrors] :  Read the device errors, and until at least one error exist, continue to read it.
+        PySDS [GetAllErrors] :  Read the device errors, and until at least one error exist, continue to read it.
                                 For each errors, it will be printed in console and returned on a list, with it's lengh in first position.
 
                                 This function also trigger a reading of the status of the device to detect if value where adapted or cancelled.
 
             Arguments :
-                print : Shall we print the decoded output on the console ? Default to false.
+                toprint : (unused) Shall we print the decoded output on the console ? Default to false.
 
             Returns :
                 List :
                     Index 0 :       Number of errors that occured
                     Index 1 - n :   Device errors codes
         """
+        stop = False
+        codes = []
+        errors = []
 
-        FetchNextError = True
-        Errors = [0]
-
-        # For each loop, we ask the device an error
-        # If not 0, then we parse it and add it to the list
-        # When the last error has been fetched (or no errors at all !), we exit the loop
-
-        while FetchNextError:
-            Ret = self.__Generics__.ReadEXR()
-
-            if Ret == 0:
-                FetchNextError = False
-
+        while stop == False:
+            ret = self.__instr__.query("SYST:ERR?").strip().split(",")
+            if int(ret[0]) == 0:
+                stop = True
+                break
+                
             else:
-                Errors[0] += 1
-                Errors.append(int(Ret))
+                codes.append(int(ret[0]))
+                errors.append(ret[1][1:-1])
 
-                if print == True:
-                    # Theses errors messages came from the Siglent SCPI documentation, and are only here to help the developper to get the error easily !
-                    match Ret:
-                        case 21:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Permission error. The command cannot be executed in local mode."
-                            )
-                        case 22:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Environment error. The instrument is not configured to correctly process command. For instance, the oscilloscope cannot be set to RIS at a slow timebase."
-                            )
-                        case 23:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Option error. The command applies to an option which has not been installed."
-                            )
-                        case 25:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Parameter error. Too many parameters specified."
-                            )
-                        case 26:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Non-implemented command."
-                            )
-                        case 32:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Waveform descriptor error. An invalid waveform descriptor has been detected."
-                            )
-                        case 36:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Panel setup error. An invalid panel setup data block has been detected."
-                            )
-                        case 50:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) No mass storage present when user attempted to access it."
-                            )
-                        case 53:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Mass storage was write protected when user attempted to create, or a file, to delete a file, or to format the device."
-                            )
-                        case 58:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Mass storage file not found."
-                            )
-                        case 59:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Requested directory not found."
-                            )
-                        case 61:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Mass storage filename not DOS compatible, or illegal filename."
-                            )
-                        case 62:
-                            print(
-                                f"     [ PySDG ] [ GetAllErrors ] : ({Ret}) Cannot write on mass storage because filename already exists."
-                            )
+        if len(codes) != 0:
+            for index, code in enumerate(codes):
+                print(f"Error {index:10} : {code:10} : {errors[index]}")
 
-        # When the loop exist, we return the list
-        Retval = self.GetDeviceStatus(print)
-
-        if Retval != 0:
-            Errors[0] += 1
-            Errors.append(
-                Retval + 1000
-            )  # Increment of 1000 to signify an error in the MSB register
-
-        return Errors
-
-    def GetDeviceStatus(self, print=False):
-        """
-        PySDG [GetDeviceStatus] :   Get the device status, and parse it to make it easier to use for developpers or users.
-                                    Print each status bit
-
-            Argument :
-                print : Shall we print the decoded output on the console ? Default to false.
-
-            Returns :
-                List of lenght 16, for each bit
-        """
-
-        # Fetch the value
-        Ret = self.__Generics__.ReadINR()
-
-        # Mask each bit in the range.
-        # We do this by logic AND and shifting to get back to 0 | 1
-        Bits = []
-        for power in range(16):
-            Bits.append((Ret & pow(2, power)) >> power)
-
-        print("Device status :")
-        print("Bit | Status | Message")
-        for index, bit in enumerate(Bits):
-            match index:
-                case 0:
-                    message = "A new signal has been acquired"
-                case 1:
-                    message = "A screen dump has terminated"
-                case 2:
-                    message = "A return to the local state is detected"
-                case 3:
-                    message = "A time-out has occurred in a data block transfer"
-                case 4:
-                    message = "A segment of a sequence waveform has been acquired"
-                case 5:
-                    message = "Reserved for LeCroy use"
-                case 6:
-                    message = 'Memory card, floppy or hard disk has become full in "AutoStore Fill" mode'
-                case 7:
-                    message = (
-                        "A memory card, floppy or hard disk exchange has been detected"
-                    )
-                case 8:
-                    message = "Waveform processing has terminated in Trace A"
-                case 9:
-                    message = "Waveform processing has terminated in Trace B"
-                case 10:
-                    message = "Waveform processing has terminated in Trace C"
-                case 11:
-                    message = "Waveform processing has terminated in Trace D"
-                case 12:
-                    message = "Pass/Fail test detected desired outcome"
-                case 13:
-                    message = "Trigger is ready"
-                case 14:
-                    message = "Reserved for future use"
-                case 15:
-                    message = "Reserved for future use"
-
-            if print == True:
-                if bit == 1:
-                    print(f" {index:2} |  {bit:5} | {message}")
-                else:
-                    print(f" {index:2} |  {bit:5} | -")
-
-        return Bits
-
-    def GetDeviceOptions(self):
-        """
-        PySDG [GetDeviceOptions] :  Return the list of the installed device options.
-                                    Function isn't working for now, but the response seems correct.
-                                    --> Return 0 where it shall return OPC 0...
-
-            Arguments :
-                None
-
-            Returns :
-                List of String for all options
-        """
-
-        Ret = self.__Generics__.ReadOPT()
-        return Ret.split(" ")[-1].split(",")
-
-    def GetDeviceStatus(self):
-        """
-        PySDG [GetDeviceStatus] :   Read the device status, and parse it to be easier for the user to read !
-
-            Arguments :
-                None
-
-            Returns :
-                List of lenght 16, for each bit
-        """
-
-        # Fetch the value
-        Ret = self.__Generics__.ReadSTB()
-
-        # Mask each bit in the range.
-        # We do this by logic AND and shifting to get back to 0 | 1
-        Bits = []
-        for power in range(8):
-            Bits.append((Ret & pow(2, power)) >> power)
-
-        print("Device status register :")
-        print("Bit | Status | Message")
-        for index, bit in enumerate(Bits):
-            match index:
-                case 0:
-                    message = "An enabled Internal state change has occurred"
-                case 1:
-                    message = "Reserved"
-                case 2:
-                    message = "A command data value has been adapted"
-                case 3:
-                    message = "Reserved"
-                case 4:
-                    message = "Output queue is not empty "
-                case 5:
-                    message = "An ESR enabled event has occurred"
-                case 6:
-                    message = "At least 1 bit in STB masked by SRE is one service is requested"
-                case 7:
-                    message = "Reserved for future use"
-
-            if bit == 1:
-                print(f" {index:2} |  {bit:5} | {message}")
-            else:
-                print(f" {index:2} |  {bit:5} | -")
-
-        return Bits
+        return [len(codes), codes]
